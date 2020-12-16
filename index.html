@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Defence Brigade</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+
+    <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet'>
+    <script type="text/javascript" src="./javascript/cookies.js"></script>
+    <script type="text/javascript" src="./javascript/drawing.js"></script>
+    <script type="text/javascript" src="./javascript/game.js"></script>
+    <script type="text/javascript" src="./javascript/objects.js"></script>
+    <script type="text/javascript" src="./javascript/player.js"></script>
+    <script type="text/javascript" src="./javascript/raycast.js"></script>
+    <script type="text/javascript" src="./javascript/setup.js"></script>
+    <script type="text/javascript" src="./javascript/sounds.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // Getting canvas and its context
+            canvas = document.getElementById('game-canvas');
+            context = canvas.getContext('2d');
+
+            // Adding an event listener on touch or mouse click
+            $('#game-canvas').on('mousedown touchstart', touchRaycast);
+
+            // Assign player's bests
+            assignPlayersBest();
+
+            // Load resources
+            loadResources();
+        });
+    </script>
+</head>
+<body>
+    <canvas id="game-canvas" width="1024" height="576"></canvas>
+</body>
+</html>

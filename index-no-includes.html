@@ -1,0 +1,2151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Defence Brigade</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+
+    <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet'>
+    <script type="text/javascript">
+        // Cookies
+        // Saves a cookie with given name and value. Used for saving player's best time and wave.
+        function saveCookie(name, value) {
+            var d = new Date();
+            var expiry = new Date(d.getFullYear() + 1, d.getMonth(), d.getDate()); // setting the expiry date a year after
+            document.cookie = name + "=" + value + ";expires=" + expiry.toUTCString() + ";path=/";
+        }
+
+        // Reads cookie value for given name. Used for reading player's best time and wave.
+        function readCookie(name) {
+            var cookieName = name + "=";
+            var cookies = decodeURIComponent(document.cookie);
+            var cookieArray = cookies.split(';');
+            for (var i = 0; i < cookieArray.length; i++) {
+                var cookie = cookieArray[i];
+                while (cookie.charAt(0) == ' ') {
+                    cookie = cookie.substring(1);
+                }
+                if (cookie.indexOf(cookieName) == 0) {
+                    return cookie.substring(cookieName.length, cookie.length);
+                }
+            }
+
+            return "0";
+        }
+
+        // Sounds
+        // Button click sound
+		var clickSound;
+		// Object select sound
+		var selectSound;
+		// Background music
+		var backgroundMusic;
+		// Explosions sound
+		var explosionSound;
+		// Player's object shot sounds
+		var shot1Sound;
+		var shot2Sound;
+		var shot3Sound;
+
+		// Plays background music. Toggled on game start.
+		function playBackgroundMusic() {
+			backgroundMusic.play();
+		}
+
+		// Pauses background music. Toggled when in pause screen.
+		function pauseBackgroundMusic() {
+			backgroundMusic.pause();
+		}
+
+		// Plays click sound.
+		function playClickSound() {
+			var audio = new Audio();
+			audio = clickSound;
+			audio.play();
+		}
+
+		// Plays select sound.
+		function playSelectSound() {
+			var audio = new Audio();
+			audio = selectSound;
+			audio.play();
+		}
+
+		// Plays shot sound.
+		function playShotSound(shotSound) {
+			var audio = new Audio();
+			audio = shotSound;
+			audio.play();
+		}
+
+		// Plays tank's explosion sound.
+		function playExplosionSound() {
+			var audio = new Audio();
+			audio = explosionSound;
+			audio.play();
+		}
+
+        // Setup
+        // Resources variables
+		var currentResource = 0;
+		var resourcesToLoad = 59;
+
+		// The starting point for enemies
+		var spawnPoint = {
+			x: tileSize + halfTileSize,
+			y: -tileSize,
+			direction: "down"
+		};
+
+		// The end point for enemies
+		var endPoint = {
+			x: tileSize * 15 + halfTileSize,
+			y: tileSize + halfTileSize,
+			direction: "right"
+		};
+
+		// Enemy move points
+		var movePoints = [spawnPoint, { x: tileSize + halfTileSize, y: tileSize + halfTileSize, direction: "right" }, { x: tileSize * 7 + halfTileSize, y: tileSize + halfTileSize, direction: "down" },
+			{ x: tileSize * 7 + halfTileSize, y: tileSize * 4 + halfTileSize, direction: "left" }, { x: tileSize + halfTileSize, y: tileSize * 4 + halfTileSize, direction: "down" },
+			{ x: tileSize + halfTileSize, y: tileSize * 6 + halfTileSize, direction: "right" }, { x: tileSize * 9 + halfTileSize, y: tileSize * 6 + halfTileSize, direction: "down" },
+			{ x: tileSize * 9 + halfTileSize, y: tileSize * 7 + halfTileSize, direction: "right" }, { x: tileSize * 11 + halfTileSize, y: tileSize * 7 + halfTileSize, direction: "up" },
+			{ x: tileSize * 11 + halfTileSize, y: tileSize + halfTileSize, direction: "right" }, endPoint];
+
+		// Movement tiles. Set up in order to prevent the player from placing any objects on them (going by path)
+		var movementTiles = [{ x: tileSize, y: 0 }, { x: tileSize * 2, y: 0 }, { x: tileSize, y: tileSize }, { x: tileSize * 2, y: tileSize }, { x: tileSize * 3, y: tileSize },
+		{ x: tileSize * 4, y: tileSize }, { x: tileSize * 5, y: tileSize }, { x: tileSize * 6, y: tileSize }, { x: tileSize * 7, y: tileSize }, { x: tileSize * 8, y: tileSize },
+		{ x: tileSize, y: tileSize * 2 }, { x: tileSize * 2, y: tileSize * 2 }, { x: tileSize * 3, y: tileSize * 2 }, { x: tileSize * 4, y: tileSize * 2 },
+		{ x: tileSize * 5, y: tileSize * 2 }, { x: tileSize * 6, y: tileSize * 2 }, { x: tileSize * 7, y: tileSize * 2 }, { x: tileSize * 8, y: tileSize * 2 },
+		{ x: tileSize * 7, y: tileSize * 3 }, { x: tileSize * 8, y: tileSize * 3 }, { x: tileSize * 7, y: tileSize * 4 }, { x: tileSize * 8, y: tileSize * 4 },
+		{ x: tileSize * 6, y: tileSize * 4 }, { x: tileSize * 5, y: tileSize * 4 }, { x: tileSize * 4, y: tileSize * 4 }, { x: tileSize * 3, y: tileSize * 4 },
+		{ x: tileSize * 2, y: tileSize * 4 }, { x: tileSize * 1, y: tileSize * 4 }, { x: tileSize * 8, y: tileSize * 5 }, { x: tileSize * 7, y: tileSize * 5 },
+		{ x: tileSize * 6, y: tileSize * 5 }, { x: tileSize * 5, y: tileSize * 5 }, { x: tileSize * 4, y: tileSize * 5 }, { x: tileSize * 3, y: tileSize * 5 },
+		{ x: tileSize * 2, y: tileSize * 5 }, { x: tileSize * 1, y: tileSize * 5 }, { x: tileSize * 1, y: tileSize * 6 }, { x: tileSize * 2, y: tileSize * 6 },
+		{ x: tileSize * 3, y: tileSize * 6 }, { x: tileSize * 4, y: tileSize * 6 }, { x: tileSize * 5, y: tileSize * 6 }, { x: tileSize * 6, y: tileSize * 6 },
+		{ x: tileSize * 7, y: tileSize * 6 }, { x: tileSize * 8, y: tileSize * 6 }, { x: tileSize * 9, y: tileSize * 6 }, { x: tileSize * 10, y: tileSize * 6 },
+		{ x: tileSize * 2, y: tileSize * 7 }, { x: tileSize * 1, y: tileSize * 7 }, { x: tileSize * 3, y: tileSize * 7 }, { x: tileSize * 4, y: tileSize * 7 },
+		{ x: tileSize * 5, y: tileSize * 7 }, { x: tileSize * 6, y: tileSize * 7 }, { x: tileSize * 7, y: tileSize * 7 }, { x: tileSize * 8, y: tileSize * 7 },
+		{ x: tileSize * 9, y: tileSize * 7 }, { x: tileSize * 10, y: tileSize * 7 }, { x: tileSize * 9, y: tileSize * 8 }, { x: tileSize * 10, y: tileSize * 8 },
+		{ x: tileSize * 11, y: tileSize * 8 }, { x: tileSize * 12, y: tileSize * 8 }, { x: tileSize * 11, y: tileSize * 7 }, { x: tileSize * 12, y: tileSize * 7 },
+		{ x: tileSize * 11, y: tileSize * 6 }, { x: tileSize * 11, y: tileSize * 5 }, { x: tileSize * 11, y: tileSize * 4 }, { x: tileSize * 11, y: tileSize * 3 },
+		{ x: tileSize * 11, y: tileSize * 2 }, { x: tileSize * 11, y: tileSize * 1 }, { x: tileSize * 12, y: tileSize * 7 }, { x: tileSize * 12, y: tileSize * 6 },
+		{ x: tileSize * 12, y: tileSize * 5 }, { x: tileSize * 12, y: tileSize * 4 }, { x: tileSize * 12, y: tileSize * 3 }, { x: tileSize * 12, y: tileSize * 2 },
+		{ x: tileSize * 12, y: tileSize * 1 }, { x: tileSize * 13, y: tileSize * 1 }, { x: tileSize * 13, y: tileSize * 2 }, { x: tileSize * 14, y: tileSize * 1 },
+		{ x: tileSize * 14, y: tileSize * 2 }, { x: tileSize * 15, y: tileSize * 1 }, { x: tileSize * 15, y: tileSize * 2 }];
+
+		// Obstalces creation
+		function createObstacles() {
+			obstaclesArray = [{ type: 'obstacle', name: 'Small Tree', image: smallTreeImg, posX: 0, posY: tileSize * 2 },
+			{ type: 'obstacle', name: 'Small Tree', image: smallTreeImg, posX: 0, posY: tileSize * 4 },
+			{ type: 'obstacle', name: 'Small Tree', image: smallTreeImg, posX: tileSize * 6, posY: tileSize * 3 },
+			{ type: 'obstacle', name: 'Small Tree', image: smallTreeImg, posX: tileSize * 9, posY: tileSize * 4 },
+			{ type: 'obstacle', name: 'Small Tree', image: smallTreeImg, posX: tileSize * 10, posY: tileSize * 4 },
+			{ type: 'obstacle', name: 'Small Tree', image: smallTreeImg, posX: tileSize * 10, posY: tileSize * 5 },
+			{ type: 'obstacle', name: 'Small Tree', image: smallTreeImg, posX: tileSize * 14, posY: tileSize * 8 },
+			{ type: 'obstacle', name: 'Small Tree', image: smallTreeImg, posX: tileSize * 15, posY: tileSize * 7 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: 0, posY: 0 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: 0, posY: tileSize * 3 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: tileSize * 3, posY: 0 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: tileSize * 3, posY: tileSize * 8 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: tileSize * 8, posY: tileSize * 8 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: tileSize * 9, posY: tileSize * 5 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: tileSize * 13, posY: 0 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: tileSize * 13, posY: tileSize * 6 },
+			{ type: 'obstacle', name: 'Big Tree', image: bigTreeImg, posX: tileSize * 15, posY: tileSize * 8 }];
+		}
+
+		// Loading resources
+		function loadResources() {
+			// Game background
+			mapImg = new Image();
+			mapImg.onload = resourceLoad();
+			mapImg.src = "./images/full-map.png";
+			mapImg.width = tileSize * 16;
+			mapImg.height = tileSize * 9;
+
+			// Main Menu image
+			mainMenuImg = new Image();
+			mainMenuImg.onload = resourceLoad();
+			mainMenuImg.src = "./images/main-menu.png";
+			mainMenuImg.width = tileSize * 16;
+			mainMenuImg.height = tileSize * 9;
+
+			// Instruction images
+			for (var i = 1; i <= 3; i++) {
+				var image = new Image();
+				image.onload = resourceLoad();
+				image.src = "./images/instructions-" + i + ".png";
+				image.width = tileSize * 16;
+				image.height = tileSize * 9;
+
+				instructionImages.push(image);
+			}
+
+			// Pause image
+			pauseImg = new Image();
+			pauseImg.onload = resourceLoad();
+			pauseImg.src = "./images/pause.png";
+			pauseImg.width = tileSize * 16;
+			pauseImg.height = tileSize * 9;
+
+			// End game
+			endScreenImg = new Image();
+			endScreenImg.onload = resourceLoad();
+			endScreenImg.src = "./images/endscreen.png";
+			endScreenImg.width = tileSize * 16;
+			endScreenImg.height = tileSize * 9;
+
+			// 'Shadow' image
+			shadowImg = new Image();
+			shadowImg.onload = resourceLoad();
+			shadowImg.src = "./images/shadow.png";
+			shadowImg.width = tileSize * 16;
+			shadowImg.height = tileSize * 9;
+
+			// Buttons
+			btnCancel = new Image();
+			btnCancel.onload = resourceLoad();
+			btnCancel.src = "./images/btn-cancel.png";
+			btnCancel.width = tileSize * 3;
+			btnCancel.height = tileSize;
+
+			btnConfirm = new Image();
+			btnConfirm.onload = resourceLoad();
+			btnConfirm.src = "./images/btn-confirm.png";
+			btnConfirm.width = tileSize * 3;
+			btnConfirm.height = tileSize;
+
+			btnInstructions = new Image();
+			btnInstructions.onload = resourceLoad();
+			btnInstructions.src = "./images/btn-instructions.png";
+			btnInstructions.width = tileSize * 3;
+			btnInstructions.height = tileSize;
+
+			btnRestart = new Image();
+			btnRestart.onload = resourceLoad();
+			btnRestart.src = "./images/btn-restart.png";
+			btnRestart.width = tileSize * 3;
+			btnRestart.height = tileSize;
+
+			btnStart = new Image();
+			btnStart.onload = resourceLoad();
+			btnStart.src = "./images/btn-start.png";
+			btnStart.width = tileSize * 3;
+			btnStart.height = tileSize;
+
+			btnNext = new Image();
+			btnNext.onload = resourceLoad();
+			btnNext.src = "./images/btn-next.png";
+			btnNext.width = tileSize * 3;
+			btnNext.height = tileSize;
+
+			btnPrev = new Image();
+			btnPrev.onload = resourceLoad();
+			btnPrev.src = "./images/btn-previous.png";
+			btnPrev.width = tileSize * 3;
+			btnPrev.height = tileSize;
+
+			btnResume = new Image();
+			btnResume.onload = resourceLoad();
+			btnResume.src = "./images/btn-resume.png";
+			btnResume.width = tileSize * 3;
+			btnResume.height = tileSize;
+
+			// Obstacles
+			smallTreeImg = new Image();
+			smallTreeImg.onload = resourceLoad();
+			smallTreeImg.src = "./images/tree-small.png";
+			smallTreeImg.width = tileSize;
+			smallTreeImg.height = tileSize;
+
+			bigTreeImg = new Image();
+			bigTreeImg.onload = resourceLoad();
+			bigTreeImg.src = "./images/tree-big.png";
+			bigTreeImg.width = tileSize;
+			bigTreeImg.height = tileSize;
+
+			// Enemies
+			tank1Img = new Image();
+			tank1Img.onload = resourceLoad();
+			tank1Img.src = "./images/tank-1.png";
+			tank1Img.width = tileSize;
+			tank1Img.height = tileSize;
+
+			tank2Img = new Image();
+			tank2Img.onload = resourceLoad();
+			tank2Img.src = "./images/tank-2.png";
+			tank2Img.width = tileSize;
+			tank2Img.height = tileSize;
+
+			soldier1Img = new Image();
+			soldier1Img.onload = resourceLoad();
+			soldier1Img.src = "./images/soldier-1.png";
+			soldier1Img.width = tileSize;
+			soldier1Img.height = tileSize;
+
+			soldier2Img = new Image();
+			soldier2Img.onload = resourceLoad();
+			soldier2Img.src = "./images/soldier-2.png";
+			soldier2Img.width = tileSize;
+			soldier2Img.height = tileSize;
+
+			// Enemies' ammunition
+			ammo1Img = new Image();
+			ammo1Img.onload = resourceLoad();
+			ammo1Img.src = "./images/bullet-small.png";
+			ammo1Img.width = tileSize;
+			ammo1Img.height = tileSize;
+
+			ammo2Img = new Image();
+			ammo2Img.onload = resourceLoad();
+			ammo2Img.src = "./images/bullet-big.png";
+			ammo2Img.width = tileSize;
+			ammo2Img.height = tileSize;
+
+			ammo3Img = new Image();
+			ammo3Img.onload = resourceLoad();
+			ammo3Img.src = "./images/rocket-small.png";
+			ammo3Img.width = tileSize;
+			ammo3Img.height = tileSize;
+
+			ammo4Img = new Image();
+			ammo4Img.onload = resourceLoad();
+			ammo4Img.src = "./images/rocket-big.png";
+			ammo4Img.width = tileSize;
+			ammo4Img.height = tileSize;
+
+			// Reload image
+			reloadImg = new Image();
+			reloadImg.onload = resourceLoad();
+			reloadImg.src = "./images/reload.png";
+			reloadImg.width = tileSize;
+			reloadImg.height = tileSize;
+
+			// Player Objects
+			lifeImg = new Image();
+			lifeImg.onload = resourceLoad();
+			lifeImg.src = "./images/life.png";
+			lifeImg.width = halfTileSize;
+			lifeImg.height = halfTileSize;
+
+			objBaseImg = new Image();
+			objBaseImg.onload = resourceLoad();
+			objBaseImg.src = "./images/object-base.png";
+			objBaseImg.width = tileSize;
+			objBaseImg.height = tileSize;
+
+			obj1Img = new Image();
+			obj1Img.onload = resourceLoad();
+			obj1Img.src = "./images/object-1.png";
+			obj1Img.width = tileSize;
+			obj1Img.height = tileSize;
+
+			obj2Img = new Image();
+			obj2Img.onload = resourceLoad();
+			obj2Img.src = "./images/object-2.png";
+			obj2Img.width = tileSize;
+			obj2Img.height = tileSize;
+
+			obj2ImgEmpty = new Image();
+			obj2ImgEmpty.onload = resourceLoad();
+			obj2ImgEmpty.src = "./images/object-2-empty.png";
+			obj2ImgEmpty.width = tileSize;
+			obj2ImgEmpty.height = tileSize;
+
+			obj3Img = new Image();
+			obj3Img.onload = resourceLoad();
+			obj3Img.src = "./images/object-3.png";
+			obj3Img.width = tileSize;
+			obj3Img.height = tileSize;
+
+			obj3ImgEmpty = new Image();
+			obj3ImgEmpty.onload = resourceLoad();
+			obj3ImgEmpty.src = "./images/object-3-empty.png";
+			obj3ImgEmpty.width = tileSize;
+			obj3ImgEmpty.height = tileSize;
+
+			obj4Img = new Image();
+			obj4Img.onload = resourceLoad();
+			obj4Img.src = "./images/object-4.png";
+			obj4Img.width = tileSize;
+			obj4Img.height = tileSize;
+
+			obj4ImgEmpty = new Image();
+			obj4ImgEmpty.onload = resourceLoad();
+			obj4ImgEmpty.src = "./images/object-4-empty.png";
+			obj4ImgEmpty.width = tileSize;
+			obj4ImgEmpty.height = tileSize;
+
+			obj5Img = new Image();
+			obj5Img.onload = resourceLoad();
+			obj5Img.src = "./images/object-5.png";
+			obj5Img.width = tileSize;
+			obj5Img.height = tileSize;
+
+			obj6Img = new Image();
+			obj6Img.onload = resourceLoad();
+			obj6Img.src = "./images/object-6.png";
+			obj6Img.width = tileSize;
+			obj6Img.height = tileSize;
+
+			rangeImg = new Image();
+			rangeImg.onload = resourceLoad();
+			rangeImg.src = "./images/range-circle.svg";
+			rangeImg.width = tileSize;
+			rangeImg.height = tileSize;
+
+			// Prohibited image
+			prohibitedImg = new Image();
+			prohibitedImg.onload = resourceLoad();
+			prohibitedImg.src = "./images/prohibited.png";
+			prohibitedImg.width = tileSize;
+			prohibitedImg.height = tileSize;
+
+			// Rockets' fire effect
+			rocketFlameImg = new Image();
+			rocketFlameImg.onload = resourceLoad();
+			rocketFlameImg.src = "./images/rocket-flame.png";
+			rocketFlameImg.width = tileSize;
+			rocketFlameImg.height = tileSize;
+
+			// Side menu
+			menuExpandImg = new Image();
+			menuExpandImg.onload = resourceLoad();
+			menuExpandImg.src = "./images/menu-expand-btn.png";
+			menuExpandImg.width = halfTileSize;
+			menuExpandImg.height = halfTileSize;
+
+			menuHideImg = new Image();
+			menuHideImg.onload = resourceLoad();
+			menuHideImg.src = "./images/menu-hide-btn.png";
+			menuHideImg.width = halfTileSize;
+			menuHideImg.height = halfTileSize;
+
+			menuFullImg = new Image();
+			menuFullImg.onload = resourceLoad();
+			menuFullImg.src = "./images/menu-expanded.png";
+			menuFullImg.width = tileSize * 2;
+			menuFullImg.height = tileSize * 9;
+
+			menuSelectImg = new Image();
+			menuSelectImg.onload = resourceLoad();
+			menuSelectImg.src = "./images/menu-selection.png";
+			menuSelectImg.width = tileSize * 2;
+			menuSelectImg.height = tileSize;
+
+			// Pop up box
+			popUpImg = new Image();
+			popUpImg.onload = resourceLoad();
+			popUpImg.src = "./images/popup.png";
+			popUpImg.width = tileSize * 12;
+			popUpImg.height = tileSize * 8;
+
+			// Special effects
+			// Tank explosion images
+			for (var i = 1; i <= 3; i++) {
+				var image = new Image();
+				image.onload = resourceLoad();
+				image.src = "./images/tank-explosion-" + i + ".png";
+				image.width = tileSize;
+				image.height = tileSize;
+
+				tankExplosionImgArray.push(image);
+			}
+
+			// Rocket explosion images
+			for (var i = 1; i <= 3; i++) {
+				var image = new Image();
+				image.onload = resourceLoad();
+				image.src = "./images/rocket-explosion-" + i + ".png";
+				image.width = tileSize;
+				image.height = tileSize;
+
+				rocketExplosionImgArray.push(image);
+			}
+
+			// Audio
+			clickSound = new Audio;
+			clickSound.onload = resourceLoad();
+			clickSound.src = "./audio/click.ogg";
+
+			selectSound = new Audio;
+			selectSound.onload = resourceLoad();
+			selectSound.src = "./audio/select.ogg";
+
+			backgroundMusic = new Audio();
+			backgroundMusic.onload = resourceLoad();
+			backgroundMusic.src = "./audio/bg-music.mp3";
+
+			explosionSound = new Audio();
+			explosionSound.onload = resourceLoad();
+			explosionSound.src = "./audio/explosion.flac";
+
+			shot1Sound = new Audio();
+			shot1Sound.onload = resourceLoad();
+			shot1Sound.src = "./audio/shot-1.mp3";
+
+			shot2Sound = new Audio();
+			shot2Sound.onload = resourceLoad();
+			shot2Sound.src = "./audio/shot-2.mp3";
+
+			shot3Sound = new Audio();
+			shot3Sound.onload = resourceLoad();
+			shot3Sound.src = "./audio/shot-3.mp3";
+		}
+
+		// Checks if all resources have been loaded.
+		function resourceLoad() {
+			currentResource++;
+			// If all resources have been loaded starting the update() method.
+			if (currentResource == resourcesToLoad) {
+				// console.log("All resources loaded");
+				update();
+			}
+		}
+
+        // Raycast
+        // Returns the coordinates of the game canvas. 
+		function getCoords(elID) {
+			var box = document.getElementById(elID).getBoundingClientRect();
+			var body = document.body;
+			var docEle = document.documentElement;
+
+			var scrollTop = window.pageYOffset || docEle.scrollTop || body.scrollTop;
+			var scrollLeft = window.pageXOffset || docEle.scrollLeft || body.scrollLeft;
+
+			var clientTop = docEle.clientTop || body.clientTop || 0;
+			var clientLeft = docEle.clientLeft || body.clientLeft || 0;
+
+			var top = box.top + scrollTop - clientTop;
+			var left = box.left + scrollLeft - clientLeft;
+
+			return { top: Math.round(top), left: Math.round(left) };
+		}
+
+		// Returns the (0,0) coordinates of a tile for passed position
+		function getTileCoords(posX, posY) {
+
+			var calcPosX = Math.floor(posX / tileSize) * tileSize;
+			var calcPosY = Math.floor(posY / tileSize) * tileSize;
+
+			return { x: calcPosX, y: calcPosY };
+		}
+
+		// Executes events depending on player's touch / click and current state (e.g. expanded menu)
+		function touchRaycast(e) {
+			var coords = getCoords('game-canvas');
+			var raycasted = false;
+
+			// Getting the position of the touch / click on the canvas
+			var posX = e.pageX - coords.left || e.touches[0].pageX - coords.left;
+			var posY = e.pageY - coords.top || e.touches[0].pageY - coords.top;
+
+			switch (currScene) {
+				case "menu":
+					// Checking if Start or Instructions button have been pressed
+					if (posX >= canvas.width / 2 - btnStart.width / 2 && posX <= canvas.width / 2 - btnStart.width / 2 + btnStart.width &&
+						posY >= canvas.height / 2 && posY <= canvas.height / 2 + btnStart.height) {
+						playClickSound();
+						startGame();
+					} else if (posX >= canvas.width / 2 - btnInstructions.width / 2 && posX <= canvas.width / 2 - btnInstructions.width / 2 + btnInstructions.width &&
+						posY >= canvas.height / 2 + btnInstructions.height + halfTileSize && posY <= canvas.height / 2 + btnInstructions.height + halfTileSize + btnInstructions.height) {
+						playClickSound();
+						showInstructions();
+					}
+					break;
+				case "instructions":
+					// Checking current page
+					if (currInstrPage == 1) {
+						// Checking if Next button has been pressed
+						if (posX >= canvas.width / 2 + tileSize / 4 && posX <= canvas.width / 2 + tileSize / 4 + btnNext.width &&
+							posY >= canvas.height - btnNext.height - tileSize / 4 && posY <= canvas.height - btnNext.height - tileSize / 4 + btnNext.height) {
+							playClickSound();
+							currInstrPage++;
+						}
+					} else if (currInstrPage == 2) {
+						// Checking if Next or Previous button has been pressed
+						if (posX >= canvas.width / 2 + tileSize / 4 && posX <= canvas.width / 2 + tileSize / 4 + btnNext.width &&
+							posY >= canvas.height - btnNext.height - tileSize / 4 && posY <= canvas.height - btnNext.height - tileSize / 4 + btnNext.height) {
+							playClickSound();
+							currInstrPage++;
+						} else if (posX >= canvas.width / 2 - btnPrev.width - tileSize / 4 && posX <= canvas.width / 2 - btnPrev.width - tileSize / 4 + btnPrev.width &&
+							posY >= canvas.height - btnPrev.height - tileSize / 4 && posY <= canvas.height - btnPrev.height - tileSize / 4 + btnPrev.height) {
+							playClickSound();
+							currInstrPage--;
+						}
+					} else if (currInstrPage == 3) {
+						// Checking if Start or Previous button has been pressed
+						if (posX >= canvas.width / 2 + tileSize / 4 && posX <= canvas.width / 2 + tileSize / 4 + btnStart.width &&
+							posY >= canvas.height - btnStart.height - tileSize / 4 && posY <= canvas.height - btnStart.height - tileSize / 4 + btnStart.height) {
+							playClickSound();
+							currInstrPage = 1;
+							startGame();
+						} else if (posX >= canvas.width / 2 - btnPrev.width - tileSize / 4 && posX <= canvas.width / 2 - btnPrev.width - tileSize / 4 + btnPrev.width &&
+							posY >= canvas.height - btnPrev.height - tileSize / 4 && posY <= canvas.height - btnPrev.height - tileSize / 4 + btnPrev.height) {
+							playClickSound();
+							currInstrPage--;
+						}
+					}
+					break;
+				case "game":
+					if (pausedGame) {
+						// Check if Resume button was pressed
+						if (posX >= canvas.width / 2 - btnResume.width / 2 && posX <= canvas.width / 2 - btnResume.width / 2 + btnResume.width &&
+							posY >= canvas.height / 2 && posY <= canvas.height / 2 + btnResume.height) {
+							playClickSound();
+							// Resetting selections
+							selectedMenuObject = false;
+							obstacleRemoverSelected = false;
+							objToRemove = null;
+							pausedGame = false;
+						}
+						return;
+					}
+
+					if (showRemoveConfirmation) {
+						// Checking if Cancel or Confirm button was pressed
+						if (posX >= canvas.width / 2 - btnCancel.width - btnCancel.width / 2 && posX <= canvas.width / 2 - btnCancel.width - btnCancel.width / 2 + btnCancel.width &&
+							posY >= canvas.height / 2 + popUpImg.height / 4 && posY <= canvas.height / 2 + popUpImg.height / 4 + btnCancel.height) {
+							playClickSound();
+							showRemoveConfirmation = false;
+							objToRemove = null;
+						} else if (posX >= canvas.width / 2 + btnConfirm.width / 2 && posX <= canvas.width / 2 + btnConfirm.width / 2 + btnConfirm.width &&
+							posY >= canvas.height / 2 + popUpImg.height / 4 && posY <= canvas.height / 2 + popUpImg.height / 4 + btnConfirm.height) {
+							playClickSound();
+
+							// Checking if the player has enough money to remove the object
+							if (money >= obstacleRemovePrice) {
+								removeObject(objToRemove);
+
+								// Not showing range for that object anymore.
+								selectedMapObject = null;
+							}
+							else {
+								// Shaking money and displaying information for the player if not enough money
+								shakeMoneyAnimation(false);
+								infoText = "Not enough money to remove this object.";
+								infoTextTimer = 3 * 1000;
+							}
+
+							// Hiding confirmation
+							showRemoveConfirmation = false;
+
+							// Resetting the object to remove and remover selection
+							objToRemove = null;
+							obstacleRemoverSelected = false;
+
+							// Resetting menu selection
+							menuSelectedRow = 0;
+							selectedMenuObject = false;
+						}
+						return;
+					}
+
+					// Getting clicked tile
+					var tileCoords = getTileCoords(posX, posY);
+
+					var menuClicked = false;
+					// Checking if menu is expanded
+					if (menuExpanded) {
+						// Checking if player pressed on hide menu button
+						if (posX >= canvas.width - menuFullImg.width - menuHideImg.width && posX <= canvas.width - menuFullImg.width &&
+							posY <= menuHideImg.height) {
+							playClickSound();
+							menuExpanded = false;
+							raycasted = true;
+							menuClicked = true;
+						}
+						else {
+							// Checking if the player selected an object in the menu
+							if (posX >= canvas.width - menuFullImg.width) {
+								playClickSound();
+								var clickedRow = posY / tileSize;
+
+								// Getting selected object
+								selectedMenuObject = true;
+								var newSelectedRow = Math.floor(clickedRow) + 1;
+
+								if (newSelectedRow < 7) {
+									obstacleRemoverSelected = false;
+								} else if (newSelectedRow == 7) {
+									obstacleRemoverSelected = true;
+									selectedMapObject = null;
+								} else if (newSelectedRow == 8) {
+									pausedGame = true;
+								} else if (newSelectedRow > 8) {
+									selectedMenuObject = false;
+								}
+
+								// If the same row has been selected, removing the selection
+								if (newSelectedRow == menuSelectedRow) {
+									selectedMenuObject = false;
+									obstacleRemoverSelected = false;
+									menuSelectedRow = 0;
+								}
+								else {
+									menuSelectedRow = newSelectedRow;
+								}
+
+								raycasted = true;
+								menuClicked = true;
+							}
+						}
+					}
+					else {
+						// Checking if the expand button has been pressed
+						if (posX >= canvas.width - menuExpandImg.width && posY <= menuExpandImg.height) {
+							playClickSound();
+							menuExpanded = true;
+							raycasted = true;
+							menuClicked = true;
+						}
+					}
+
+					// Creating the object only if the menu wasn't clicked (resolving issue with building unintentionally behind the menu)
+					if (menuClicked == false) {
+						if (selectedMenuObject && obstacleRemoverSelected == false) {
+							playSelectSound();
+							createObjectOnMap(tileCoords.x, tileCoords.y, menuSelectedRow);
+							selectedMenuObject = false;
+							menuSelectedRow = 0;
+						}
+					}
+
+					// Checking if an object was pressed
+					for (var i = 0; i < playerObjArray.length; i++) {
+						if (playerObjArray[i].posX == tileCoords.x && playerObjArray[i].posY == tileCoords.y) {
+							playSelectSound();
+							selectedMapObject = playerObjArray[i];
+							raycasted = true;
+							break;
+						}
+					}
+
+					// Checking if an obstacle was pressed
+					for (var i = 0; i < obstaclesArray.length; i++) {
+						if (obstaclesArray[i].posX == tileCoords.x && obstaclesArray[i].posY == tileCoords.y) {
+							playSelectSound();
+							selectedMapObject = obstaclesArray[i];
+							raycasted = true;
+							break;
+						}
+					}
+
+					// If an object has been selected using the remover displaying confirmation
+					if (selectedMapObject && obstacleRemoverSelected) {
+						showRemoveConfirmation = true;
+						objToRemove = selectedMapObject;
+					}
+
+					if (raycasted == false) {
+						selectedMapObject = null;
+					}
+					break;
+				case "end":
+					// Checking if Restart button has been pressed
+					if (posX >= canvas.width / 2 - btnRestart.width / 2 && posX <= canvas.width / 2 - btnRestart.width / 2 + btnRestart.width &&
+						posY >= canvas.height - btnRestart.height - tileSize / 4 && posY <= canvas.height - btnRestart.height - tileSize / 4 + btnRestart.height) {
+						playClickSound();
+						restartGame();
+					}
+					break;
+				default:
+					break;
+			}
+		}
+
+        // Player
+        // Holds player's longest survival time
+		var playerBestTime = 0;
+		// Holds player's longest survival wave
+		var playerBestWave = 0;
+		// Used to check if player's best has been saved. Prevents from saving each frame.
+		var playerBestSaved = false;
+
+		// Saves players best survival time and wave at the end of the game.
+		function savePlayersBest(time, wave) {
+			saveCookie('playerBestTime', time);
+			saveCookie('playerBestWave', wave);
+		}
+
+		// Gets and assigns best survival time and wave at the begining of the game.
+		function assignPlayersBest() {
+			playerBestTime = parseInt(readCookie('playerBestTime'));
+			playerBestWave = parseInt(readCookie('playerBestWave'));
+
+			// Checking if read values is a number. If not, setting it to 0.
+			if (!isNaN(playerBestTime))
+				playerBestTime = 0;
+			if (!isNaN(playerBestWave))
+				playerBestWave = 0;
+		}
+
+        // Objects
+        var playerObjArray = new Array();
+		var enemyObjArray = new Array();
+		var obstaclesArray = new Array();
+		var bulletArray = new Array();
+		var prohibitedObjArray = new Array();
+		var rocketExplosionArray = new Array();
+		var tankExplosionsArray = new Array();
+
+		var objToRemove;
+		var selectedMapObject;
+
+		// Checks if its possible to build on given tile.
+		function checkIfPossibleToBuild(posX, posY) {
+			var canBuild = true;
+
+			// Checking if this tile belongs to the path the enemy moves by
+			for (var i = 0; i < movementTiles.length; i++) {
+				if (movementTiles[i].x == posX && movementTiles[i].y == posY) {
+					canBuild = false;
+					//console.log("You cannot build objects on the path.");
+					infoText = "You cannot build objects on the path.";
+					infoTextTimer = 3 * 1000;
+					var prohibitedObj = { posX: movementTiles[i].x, posY: movementTiles[i].y, timer: 0 };
+					prohibitedObjArray.push(prohibitedObj);
+					break;
+				}
+			}
+
+			// Checking if this tile is free from obstacles
+			for (var i = 0; i < obstaclesArray.length; i++) {
+				if (obstaclesArray[i].posX == posX && obstaclesArray[i].posY == posY) {
+					canBuild = false;
+					//console.log("You cannot build objects on obstacles.");
+					infoText = "You cannot build objects on obstacles.";
+					infoTextTimer = 3 * 1000;
+					var prohibitedObj = { posX: obstaclesArray[i].posX, posY: obstaclesArray[i].posY, timer: 0 };
+					prohibitedObjArray.push(prohibitedObj);
+					break;
+				}
+			}
+
+			// Checking if this tile is free from player objects
+			for (var i = 0; i < playerObjArray.length; i++) {
+				if (playerObjArray[i].posX == posX && playerObjArray[i].posY == posY) {
+					canBuild = false;
+					//console.log("You cannot build objects on top of another");
+					infoText = "You cannot build object on top of another";
+					infoTextTimer = 3 * 1000;
+					var prohibitedObj = { posX: playerObjArray[i].posX, posY: playerObjArray[i].posY, timer: 0 };
+					prohibitedObjArray.push(prohibitedObj);
+					break;
+				}
+			}
+
+			return canBuild;
+		}
+
+		// Creates player object on map
+		function createObjectOnMap(posX, posY, objNumber) {
+			// Check if its possible to build on this tile
+			if (!checkIfPossibleToBuild(posX, posY))
+				return;
+
+			// Creating new Audio() to assign object's shooting to rather than using the same audio file accross all objects.
+			// This would result in playing the sound only for one object (as the sound would already be in the play() state).
+			var sound = new Audio();
+
+			// Creating a default player object. It will have the values assigned later depending on what object is to be created.
+			var playerObj = {
+				type: null,
+				name: null,
+				image: null,
+				emptyImage: null,
+				shotSound: null,
+				posX: posX,
+				posY: posY,
+				price: 0,
+				rotation: 0,
+				damage: 0,
+				ammo: 0,
+				maxAmmo: 0,
+				ammoSpeed: 0,
+				ammoImg: null,
+				barrelsNo: 0,
+				range: 0,
+				fireRate: 0,
+				fireTimer: 0,
+				outOfAmmo: false,
+				reloading: false,
+				reloadTime: 0, // needs to be multiplied by 1000 to change miliseconds to seconds
+				reloadTimer: 0, // needs to be multiplied by 1000 to change miliseconds to seconds
+				fireTimer: 0
+			};
+
+			switch (objNumber) {
+				case 1:
+					sound.src = shot1Sound.src;
+					playerObj.type = "player-object";
+					playerObj.name = "Twin Gun";
+					playerObj.image = obj1Img;
+					playerObj.emptyImage = obj1Img;
+					playerObj.shotSound = shot1Sound;
+					playerObj.price = 300;
+					playerObj.damage = 3;
+					playerObj.maxAmmo = 10;
+					playerObj.ammo = playerObj.maxAmmo;
+					playerObj.ammoSpeed = 10;
+					playerObj.ammoImg = ammo1Img;
+					playerObj.barrelsNo = 2;
+					playerObj.range = 3;
+					playerObj.fireRate = 0.1 * 1000;
+					playerObj.reloadTime = 4 * 1000;
+					break;
+				case 2:
+					sound.src = shot2Sound.src;
+					playerObj.type = "player-object";
+					playerObj.name = "Twin Rockets";
+					playerObj.image = obj2Img;
+					playerObj.emptyImage = obj2ImgEmpty;
+					playerObj.shotSound = shot1Sound;
+					playerObj.price = 500;
+					playerObj.damage = 40;
+					playerObj.maxAmmo = 2;
+					playerObj.ammoSpeed = 5;
+					playerObj.ammoImg = ammo3Img;
+					playerObj.barrelsNo = 2;
+					playerObj.range = 4;
+					playerObj.fireRate = 2 * 1000;
+					playerObj.reloadTime = 5 * 1000;
+					break;
+				case 3:
+					sound.src = shot2Sound.src;
+					playerObj.type = "player-object";
+					playerObj.name = "Bare Rockets";
+					playerObj.image = obj3Img;
+					playerObj.emptyImage = obj3ImgEmpty;
+					playerObj.shotSound = shot1Sound;
+					playerObj.price = 1500;
+					playerObj.damage = 40;
+					playerObj.maxAmmo = 2;
+					playerObj.ammoSpeed = 5;
+					playerObj.ammoImg = ammo3Img;
+					playerObj.barrelsNo = 2;
+					playerObj.range = 5;
+					playerObj.fireRate = 2 * 1000;
+					playerObj.reloadTime = 5 * 1000;
+					break;
+				case 4:
+					sound.src = shot2Sound.src;
+					playerObj.type = "player-object";
+					playerObj.name = "Big Marry";
+					playerObj.image = obj4Img;
+					playerObj.emptyImage = obj4ImgEmpty;
+					playerObj.shotSound = shot2Sound;
+					playerObj.price = 4000;
+					playerObj.damage = 100;
+					playerObj.maxAmmo = 2;
+					playerObj.ammoSpeed = 5;
+					playerObj.ammoImg = ammo4Img;
+					playerObj.barrelsNo = 1;
+					playerObj.range = 6;
+					playerObj.fireRate = 1 * 1000;
+					playerObj.reloadTime = 8 * 1000;
+					break;
+				case 5:
+					sound.src = shot3Sound.src;
+					playerObj.type = "player-object";
+					playerObj.name = "Big Bertha";
+					playerObj.image = obj5Img;
+					playerObj.emptyImage = obj5Img;
+					playerObj.shotSound = sound;
+					playerObj.price = 8000;
+					playerObj.damage = 30;
+					playerObj.maxAmmo = 10;
+					playerObj.ammoSpeed = 10;
+					playerObj.ammoImg = ammo2Img;
+					playerObj.barrelsNo = 1;
+					playerObj.range = 6;
+					playerObj.fireRate = 1 * 1000;
+					playerObj.reloadTime = 6 * 1000;
+					break;
+				case 6:
+					sound.src = shot3Sound.src;
+					playerObj.type = "player-object";
+					playerObj.name = "Red Brothers";
+					playerObj.image = obj6Img;
+					playerObj.emptyImage = obj6Img;
+					playerObj.shotSound = sound;
+					playerObj.price = 15000;
+					playerObj.damage = 30;
+					playerObj.maxAmmo = 10;
+					playerObj.ammoSpeed = 10;
+					playerObj.ammoImg = ammo2Img;
+					playerObj.barrelsNo = 2;
+					playerObj.range = 6;
+					playerObj.fireRate = 1 * 1000;
+					playerObj.reloadTime = 8 * 1000;
+					break;
+				default:
+					break;
+			}
+
+			// Setting the ammo to max
+			playerObj.ammo = playerObj.maxAmmo;
+			// Setting the fire timer to the same value as fire rate so that first shot can be taken straight away
+			playerObj.fireTimer = playerObj.fireRate;
+
+			// Checking if the player has enough money to build the object
+			if (money >= playerObj.price) {
+				playerObjArray.push(playerObj);
+				money -= playerObj.price;
+			}
+			else {
+				infoText = "Not enough money to build " + playerObj.name;
+				infoTextTimer = 3 * 1000;
+				shakeMoneyAnimation(false);
+			}
+
+			// Resetting the selected menu object so that the player doesn't accidentally create it again.
+			selectedMenuObject = false;
+		}
+
+		// Removes a certain object from the map
+		function removeObject(objToRemove) {
+			// Checking if the object is an obstacle or a player object. Filtering the appropriate array for the object to remove.
+			if (objToRemove.type == "obstacle") {
+				obstaclesArray = obstaclesArray.filter(function (el) { return el != objToRemove });
+			} else if (objToRemove.type == "player-object") {
+				playerObjArray = playerObjArray.filter(function (el) { return el != objToRemove });
+			}
+
+			// Subtracting from player's money the cost of removing the object
+			money -= obstacleRemovePrice;
+		}
+
+		// Creates an enemy object.
+		function createEnemy(typeToUse) {
+			// Creating a default enemy object. It will have the values assigned later depending on what type of enemy is to be created.
+			var enemy = {
+				type: typeToUse,
+				health: 100,
+				armor: 0,
+				speed: 0,
+				posX: spawnPoint.x,
+				posY: spawnPoint.y,
+				image: null,
+				pointReached: 0,
+				isDead: false
+			};
+
+			switch (typeToUse) {
+				case "tank-1":
+					enemy.armor = 200;
+					enemy.speed = 1;
+					enemy.image = tank1Img;
+					break;
+				case "tank-2":
+					enemy.armor = 100;
+					enemy.speed = 1;
+					enemy.image = tank2Img;
+					break;
+				case "soldier-1":
+					enemy.armor = 0;
+					enemy.speed = 2;
+					enemy.image = soldier1Img;
+					break;
+				case "soldier-2":
+					enemy.armor = 50;
+					enemy.speed = 2;
+					enemy.image = soldier2Img;
+					break;
+				default:
+					break;
+			}
+
+			// Making the armour dependent on current wave
+			enemy.armor = (wave + 1)
+
+			// Adding the enemy object to array of enemies.
+			enemyObjArray.push(enemy);
+		}
+
+        // Game
+        var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+		window.requestAnimationFrame = requestAnimationFrame;
+
+		// Game variables
+		var context;
+		var canvas;
+		var currScene = "menu";
+		var pausedGame = false;
+		const tileSize = 64;
+		const halfTileSize = tileSize / 2; // Creates offset
+		var lastFrameTime = 0.0;
+		var frameTime = 0.0;
+		var infoText = "";
+		var infoTextTimer = 0;
+
+		// Gameplay variables
+		var wave = 1;
+		var money = 1000;
+		var lifes = 5;
+		var gameTimer = 0;
+		var obstacleRemovePrice = 1000;
+		var killEnemyMoney = 100;
+
+		// Wave variables
+		var waveEnemyAmount = 0;
+		var waveEnemyCreated = 0;
+		var waveEnemyCreateTimer = 0;
+		var waveEnemyCreateTime = 2;
+		var waveBreakTimer = 10;
+		var waveEnd = false;
+
+		// 'State'
+		var currInstrPage = 1;
+		var menuSelectedRow = 0;
+		var menuExpanded = false;
+		var selectedMenuObject = false;
+		var obstacleRemoverSelected = false;
+		var showRemoveConfirmation = false;
+
+		// Returns a string of converted milliseconds to mm:ss time
+		function msToMMSS(milliseconds) {
+			// Converting to seconds
+			var seconds = milliseconds / 1000;
+			// Extracting minutes
+			var minutes = parseInt(seconds / 60);
+			// Getting seconds not extracted in minutes
+			seconds = Math.round(seconds % 60, 0);
+
+			// Padding 0s to minutes
+			var minTxt = "0";
+			if (minutes < 10)
+				minTxt = "0" + minutes;
+			else
+				minTxt = minutes;
+
+			// Padding 0s to seconds
+			var secTxt = "0";
+			if (seconds < 10)
+				secTxt = "0" + seconds;
+			else
+				secTxt = seconds;
+
+			return (minTxt + ":" + secTxt);
+		}
+
+		// Returns the distance from one point to another in tiles (player's objects range is referencing the tiles it covers)
+		function getTileDistance(fromX, fromY, toX, toY) {
+			// Using Pythagoras theorem to get the distance between the objects
+			var x = fromX - toX;
+			var y = fromY - toY;
+			var dist = Math.sqrt(x * x + y * y);
+
+			return (dist / tileSize);
+		}
+
+		// Returns the angle from one point to another. Used to determine the rotation of player's objects towards the enemy
+		function getAngleTowardsObject(fromX, fromY, toX, toY) {
+			// Getting the angle towards the object
+			var degAngle = Math.atan2(fromX - toX, fromY - toY) * (180 / Math.PI);
+			// Since objects face the top, this will be their 0* angle.
+			var angleToReturn = 0;
+
+			// If 'from' is on the right side of the to object then the angle is 'negative'
+			if (fromX >= toX)
+				angleToReturn = 360 - degAngle;
+			else
+				angleToReturn = degAngle - 360;
+
+			return degAngle * -1;
+		}
+
+		// Perform normal object behaviour
+		function objectBehaviour(obj) {
+			if (obj.ammo == 0) {
+				reload(obj);
+			}
+		}
+
+		// Creates a bullet object
+		function createBullet(obj, enemy) {
+			// Creating bullet for each barrel an object has
+			for (var i = 0; i < obj.barrelsNo; i++) {
+				// Get current rotation of the object
+				var angleRot = obj.rotation * (180 / Math.PI);
+				var posX = obj.posX;
+				var posY = obj.posY;
+				// Creating an offset for the bullets if an object has two barrels.
+				// Which axis is modified depends on object's rotation.
+				if ((angleRot < 0 && angleRot >= - 90) || (angleRot > 0 && angleRot <= 90)) {
+					posY = posY - tileSize / 8 + tileSize / 4 * i;
+				} else if ((angleRot < -90 && angleRot >= -180) || (angleRot > 90 && angleRot <= 180)) {
+					posX = posX - tileSize / 8 + tileSize / 4 * i;
+				}
+
+				// Checking if the object shoots rockets. This will be used to add fire and explosion special effects.
+				var typeOfAmmo = "bullets";
+				if (obj.ammoImg == ammo3Img || obj.ammoImg == ammo4Img) {
+					typeOfAmmo = "rockets";
+				}
+
+				// Creating bullet object
+				var bullet = {
+					type: typeOfAmmo,
+					damage: obj.damage,
+					speed: obj.ammoSpeed,
+					rotation: 0,
+					posX: posX,
+					posY: posY,
+					image: obj.ammoImg,
+					enemy: enemy,
+					reachedEnemy: false
+				};
+
+				// Adding bullet to the array holding bullets.
+				bulletArray.push(bullet);
+			}
+		}
+
+		// Moving bullets towards the enemies
+		function moveBullets() {
+			for (var i = 0; i < bulletArray.length; i++) {
+				var bullet = bulletArray[i];
+				if (bullet.enemy == undefined) {
+					bullet.reachedEnemy = true;
+					break;
+				}
+				// Getting the bullet and enemy positions difference
+				var dx = bullet.enemy.posX - bullet.posX;
+				var dy = bullet.enemy.posY - bullet.posY;
+
+				// Getting the angle
+				var angle = Math.atan2(dy, dx);
+
+				// Getting the X and Y velocity
+				var velX = bullet.speed * Math.cos(angle);
+				var velY = bullet.speed * Math.sin(angle);
+
+				if (dx > -5 && dx < 5 && dy > -5 && dy < 5) {
+					bullet.reachedEnemy = true;
+					dealDamage(bullet);
+
+					// If the bullet is a rocket, creating a rocket explosion animation
+					if (bullet.type == "rockets") {
+						createRocketExplosion(bullet.enemy.posX, bullet.enemy.posY);
+					}
+				}
+
+				// Adding the velocities to x and y axis
+				bullet.posX += velX;
+				bullet.posY += velY;
+			}
+		}
+
+		// Dealing damage to the enemy for bullets that reached their target.
+		function dealDamage(bullet) {
+			var enemy = bullet.enemy;
+
+			// Subtracting from armor first
+			if (enemy.armor >= 0) {
+				enemy.armor -= bullet.damage;
+			}
+			else {
+				enemy.health -= bullet.damage;
+				if (enemy.health <= 0) {
+
+					enemy.isDead = true;
+					shakeMoneyAnimation(true);
+				}
+			}
+
+			// Removing bullets that reached the enemy
+			bulletArray = bulletArray.filter(function (el) { return el.reachedEnemy != true })
+			
+			// Removing enemies that died
+			removeDeadEnemies();
+		}
+
+		// Removes the 'dead' enemies and adds player the money
+		function removeDeadEnemies() {
+			// Getting all dead enemies into one array
+			var deadArray = enemyObjArray.filter(function (el) { return el.isDead == true });
+
+			// Adding player money for killed enemies.
+			money += deadArray.length * killEnemyMoney;
+
+			// If the object is a tank, drawing explosion animation and playing explosion sound
+			for (var i = 0; i < deadArray.length; i++) {
+				var obj = deadArray[i];
+				if (obj.type == 'tank-1' || obj.type == 'tank-2') {
+					createTankExplosion(obj.posX, obj.posY);
+					playExplosionSound();
+				}
+			}
+
+			// Removing the dead enemies from the array that holds the enemies.
+			enemyObjArray = enemyObjArray.filter(function (el) { return el.isDead != true });
+		}
+
+		// Creates a tank explosion animation
+		function createTankExplosion(posX, posY) {
+			var animObj = {
+				posX: posX,
+				posY: posY,
+				framesPassed: 0
+			};
+
+			tankExplosionsArray.push(animObj);
+		}
+
+		// Creates a rocket explosion animation
+		function createRocketExplosion(posX, posY) {
+			var animObj = {
+				posX: posX,
+				posY: posY,
+				framesPassed: 0
+			};
+
+			rocketExplosionArray.push(animObj);
+		}
+
+		// Performs a reload action on player's object
+		function reload(obj) {
+			// Setting the object as reloading. This prevents it from shooting.
+			obj.reloading = true;
+			// Setting the reload timer
+			obj.reloadTimer += frameTime;
+			// If the reload time has been reached the object successfully reloaded ammunition
+			if (obj.reloadTimer >= obj.reloadTime) {
+				obj.reloading = false;
+				obj.ammo = obj.maxAmmo;
+				obj.reloadTimer = 0;
+				obj.fireTimer = obj.fireRate;
+			}
+			else {
+				// If not finished reloading draw reloading image.
+				drawReloading(obj);
+			}
+		}
+
+		// Shoots bullets at enemy
+		function shootAtEnemy(obj, enemy) {
+			// Checking if the object isn't reloading
+			if (!obj.reloading) {
+				// Checking if the object has enough ammunition
+				if (obj.ammo > 0) {
+					obj.fireTimer += frameTime;
+					// If enough time has passed since last shot, shooting.
+					if (obj.fireTimer >= obj.fireRate) {
+						// Creating the bullet object
+						createBullet(obj, enemy);
+						obj.ammo--;
+						obj.fireTimer = 0;
+						// Playing object's shot sound
+						playShotSound(obj.shotSound);
+					}
+				}
+				else {
+					reload(obj);
+				}
+			}
+		}
+
+		// Moves the enemies.
+		function moveEnemies() {
+			// If at least 1 enemy reached the end point, the enemy will be removed from the array once finished working with it.
+			var enemyFinished = false;
+
+			// Sorting enemyObjArray to keep the closest enemy to the end point first.
+			enemyObjArray.sort(function (a, b) {
+				return b.pointReached - a.pointReached;
+			});
+
+			// Checking if enemy has reached the next point.
+			for (var i = 0; i < enemyObjArray.length; i++) {
+				var enemy = enemyObjArray[i];
+				var nextPoint = enemy.pointReached + 1;
+
+				if (enemy.posY == movePoints[nextPoint].y && enemy.posX == movePoints[nextPoint].x) {
+					//Checking if its the last one. Else changing the nextPoint to the next one.
+					if (nextPoint + 1 == movePoints.length) {
+						enemyFinished = true;
+						enemy.pointReached = movePoints.length - 1;
+						continue;
+					}
+					else {
+						enemy.pointReached += 1;
+					}
+				}
+
+				// Gets the current direction of the enemy. Manipulating the correct axis depending on it.
+				direction = movePoints[enemy.pointReached].direction;
+				switch (direction) {
+					case "up":
+						enemy.posY = enemy.posY - enemy.speed;
+						break;
+					case "down":
+						enemy.posY = enemy.posY + enemy.speed;
+						break;
+					case "left":
+						enemy.posX = enemy.posX - enemy.speed;
+						break;
+					case "right":
+						enemy.posX = enemy.posX + enemy.speed;
+						break;
+					default:
+						break;
+				}
+			}
+
+			// If enemy reached the end point executing endPointReached() function.
+			if (enemyFinished)
+				endPointReached();
+		}
+
+		// Reduces player's money and lifes, removes enemies that reached the end point.
+		function endPointReached() {
+			// Removing all enemies that reached the end point
+			enemyObjArray = enemyObjArray.filter(function (el) { return el.pointReached != movePoints.length - 1 })
+
+			// Removing one life
+			lifes--;
+			if (lifes <= 0)
+				currScene = "end";
+
+			// Reducing money
+			shakeMoneyAnimation(false);
+			if (money >= 500)
+				money -= 500;
+			else
+				money = 0;
+		}
+
+		// Restarts the game. Defaults all variables.
+		function restartGame() {
+			wave = 1;
+			waveEnd = false;
+			waveEnemyAmount = 5;
+			waveEnemyCreated = 0;
+			waveEnemyCreateTimer = 0;
+			enemyObjArray.length = 0;
+			money = 1000;
+			lifes = 5;
+			gameTimer = 0;
+			playerObjArray.length = 0;
+			bulletArray.length = 0;
+			menuExpanded = false;
+			obstaclesArray.length = 0;
+			obstacleRemoverSelected = false;
+			showRemoveConfirmation = false;
+			objToRemove = null;
+			selectedMapObject = null;
+			selectedMenuObject = false;
+			prohibitedObjArray.length = 0;
+			infoText = "";
+			infoTextTimer = 0;
+			startGame();
+		}
+
+		// Starts the game by creating obstacles and setting the current scene.
+		function startGame() {
+			createObstacles();
+			currScene = "game";
+		}
+
+		// Shows the instructions screen.
+		function showInstructions() {
+			currScene = "instructions";
+			currInstrPage = 1;
+		}
+
+		// Changes current scene to end. This takes the player to the end screen.
+		function endGame() {
+			currScene = "end";
+		}
+
+		// Update
+		function update() {
+			switch (currScene) {
+				case "menu":
+					drawMainMenu();
+					break;
+				case "instructions":
+					drawInstructions(currInstrPage);
+					break;
+				case "game":
+					var now = performance.now();
+					if (lastFrameTime == 0.0)
+						lastFrameTime = now;
+					// Setting the frame time
+					frameTime = now - lastFrameTime;
+					lastFrameTime = now;
+
+					// Checking if the game isn't paused
+					if (!pausedGame) {
+						// Adding frame time to game time
+						gameTimer += frameTime;
+						// Creating enemy wave
+						createWave(frameTime);
+					}
+
+					// Drawing the full game
+					drawGame();
+
+					// Displaying information dependent on user selection
+					if (selectedMenuObject && !obstacleRemoverSelected) {
+						infoText = "Click on the map to create the object.";
+						infoTextTimer = frameTime * 2;
+					}
+
+					// Displaying information dependent on user selection
+					if (obstacleRemoverSelected && !objToRemove) {
+						infoText = "Click on an object on the map to remove it.";
+						infoTextTimer = frameTime * 2;
+					}
+
+					// Drawing pause screen and pausing the music if game is paused.
+					if (pausedGame) {
+						pauseBackgroundMusic();
+						drawPause();
+					}
+					else {
+						playBackgroundMusic();
+					}
+
+					break;
+				case "end":
+					drawEndScreen();
+					break;
+				default:
+					break;
+			}
+			// Calling the update after redrawing
+			requestAnimationFrame(update);
+		}
+
+		// Returns the randomly generated enemy type
+		function getEnemyType() {
+			// Creating tank-2 or solider-2 only after wave 4
+			if (wave < 5) {
+				var rand = Math.floor(Math.random() * (3 - 1)) + 1; // Generating a random number 1 or 2
+				switch (rand) {
+					case 1:
+						return 'tank-1';
+						break;
+					case 2:
+						return 'soldier-1';
+						break;
+					default:
+						return 'tank-1';
+						break;
+				}
+			}
+			else {
+				var rand = Math.floor(Math.random() * (5 - 1)) + 1; // Generating a random number between 1 and 4
+				switch (rand) {
+					case 1:
+						return 'tank-1';
+						break;
+					case 2:
+						return 'soldier-1';
+						break;
+					case 3:
+						return 'tank-2';
+						break;
+					case 4:
+						return 'soldier-2';
+						break;
+					default:
+						return 'tank-2';
+						break;
+				}
+			}
+		}
+
+		// Adds player money, creates a new wave after break time period
+		function waitForNextWave(timer) {
+			// Waiting for all enemies to get killed / reach the next point
+			if (enemyObjArray.length == 0) {
+				// Making sure the player receives the money once.
+				if (waveEnemyCreateTimer == 0) {
+					// Giving player money. Playing green coloured animation.
+					shakeMoneyAnimation(true);
+					money += 500;
+
+					// Making all objects reload to get ready for next wave.
+					for (var i = 0; i < playerObjArray.length; i++) {
+						if (playerObjArray[i].ammo != playerObjArray[i].maxAmmo)
+							playerObjArray[i].ammo = 0;
+					}
+				}
+
+				waveEnemyCreateTimer += timer;
+
+				var secondsLeft = Math.floor(((waveBreakTimer * 1000) - waveEnemyCreateTimer) / 1000);
+
+				// Displaying info text.
+				infoText = "Wave " + (wave + 1) + " incomming in " + (secondsLeft + 1) + " seconds.";
+				// Setting the timer to be short in order to prevent from displaying it long after the new wave has started.
+				infoTextTimer = ((waveBreakTimer * 1000) - waveEnemyCreateTimer);
+
+				// If enough time elapsed since end of last wave (converting waveBreakTimer to seconds)
+				if (waveEnemyCreateTimer >= waveBreakTimer * 1000) {
+					// Setting up all the amounts for the next wave
+					waveEnd = false;
+					wave++;
+					waveEnemyCreated = 0;
+					waveEnemyAmount = 5 * wave;
+				}
+			}
+		}
+
+		// Creates the enemy wave.
+		function createWave(timer) {
+			if (!waveEnd) {
+				waveEnemyCreateTimer += timer;
+
+				// Converting waveEnemyCreateTimer to seconds
+				if (waveEnemyCreateTimer >= waveEnemyCreateTime * 1000) {
+					// Creating the enemy.
+					createEnemy(getEnemyType());
+					waveEnemyCreated++;
+					waveEnemyCreateTimer = 0;
+
+					// Generating new random create time between 0.5s to 3s (5 to 20 and diving by 10)
+					waveEnemyCreateTime = (Math.floor(Math.random() * (31 - 5)) + 5) / 10;
+				}
+
+				// If all enemies for that wave have been created, setting the wave as ended.
+				if (waveEnemyCreated >= waveEnemyAmount) {
+					waveEnd = true;
+				}
+			}
+			else {
+				waitForNextWave(timer);
+			}
+		}
+
+        // Drawing
+        // Images
+		var mapImg;
+		var lifeImg;
+		var smallTreeImg;
+		var bigTreeImg;
+		var tank1Img;
+		var tank2Img;
+		var soldier1Img;
+		var soldier2Img;
+		var objBaseImg;
+		var mainMenuImg;
+		var menuExpandImg;
+		var menuHideImg;
+		var menuFullImg;
+		var menuSelectImg;
+		var obj1Img;
+		var obj2Img;
+		var obj2ImgEmpty;
+		var obj3Img;
+		var obj3ImgEmpty;
+		var obj4Img;
+		var obj4ImgEmpty;
+		var obj5Img;
+		var obj6Img;
+		var ammo1Img;
+		var ammo2Img;
+		var ammo3Img;
+		var ammo4Img;
+		var reloadImg;
+		var popUpImg;
+		var rangeImg;
+		var btnCancel;
+		var btnConfirm;
+		var btnInstructions;
+		var btnRestart;
+		var btnStart;
+		var btnNext;
+		var btnPrev;
+		var btnResume;
+		var endScreenImg;
+		var shadowImg;
+		var pauseImg;
+		var prohibitedImg;
+		var rocketFlameImg;
+
+		// Image arrays
+		var instructionImages = new Array();
+		var tankExplosionImgArray = new Array();
+		var rocketExplosionImgArray = new Array();
+
+		// Variables for money shake animation
+		var shakeMoneyTimer = 0;
+		var shakeMoney = false;
+		var shakeMoneyPositive = false;
+
+		// Drawing remove confirmation pop up box
+		function drawRemoveConfirmation() {
+			// Checking if the confirmation should be shown
+			if (!showRemoveConfirmation)
+				return;
+
+			// Checking if an object to remove has been selected
+			if (objToRemove == null || objToRemove == undefined)
+				return;
+
+			// Pop up image
+			context.drawImage(popUpImg, canvas.width / 2 - popUpImg.width / 2, canvas.height / 2 - popUpImg.height / 2, popUpImg.width, popUpImg.height);
+
+			// Draw text
+			// Drawing main text
+			var mainTxt = "Are you sure you want to remove " + objToRemove.name + "?";
+			context.fillStyle = "#FFF";
+			context.font = "30px Oswald";
+			context.fillText(mainTxt, canvas.width / 2 - context.measureText(mainTxt).width / 2, canvas.height / 2 - halfTileSize * 3);
+
+			// Drawing the image of the object to be removed
+			// If it is a player object draw base as well
+			if (objToRemove.type == "player-object") {
+				context.drawImage(objBaseImg, canvas.width / 2 - objBaseImg.width / 2, canvas.height / 2 - halfTileSize * 2, objBaseImg.width, objBaseImg.height);
+			}
+			context.drawImage(objToRemove.image, canvas.width / 2 - objToRemove.image.width / 2, canvas.height / 2 - halfTileSize * 2, objToRemove.image.width, objToRemove.image.height);
+
+			// Drawing secondary text
+			var secondaryTxt = "This will cost you $" + obstacleRemovePrice + ".";
+			context.fillText(secondaryTxt, canvas.width / 2 - context.measureText(secondaryTxt).width / 2, canvas.height / 2 + objToRemove.image.height);
+
+			// Draw Cancel and Confirm buttons
+			context.drawImage(btnCancel, canvas.width / 2 - btnCancel.width - btnCancel.width / 2, canvas.height / 2 + popUpImg.height / 4, btnCancel.width, btnCancel.height);
+			context.drawImage(btnConfirm, canvas.width / 2 + btnConfirm.width / 2, canvas.height / 2 + popUpImg.height / 4, btnConfirm.width, btnConfirm.height);
+		}
+
+		// Draws object's range
+		function drawObjectRange() {
+			// Checking if an object has been selected
+			if (selectedMapObject == null || selectedMapObject == undefined)
+				return;
+
+			// Checking if the object isn't an obstacle
+			if (selectedMapObject.type == "obstacle")
+				return;
+
+			// Checking if an object remover hasn't been selected.
+			if (obstacleRemoverSelected)
+				return;
+
+			// Getting the size to display
+			var size = selectedMapObject.range * tileSize * 2;
+			// Drawing a circle from the middle of the object
+			var centreX = selectedMapObject.posX + selectedMapObject.image.width / 2 - size / 2;
+			var centreY = selectedMapObject.posY + selectedMapObject.image.height / 2 - size / 2;
+			// Drawing the range image
+			context.drawImage(rangeImg, centreX, centreY, size, size);
+		}
+
+		// Draws the map of the game (background)
+		function drawMap() {
+			context.drawImage(mapImg, 0, 0, mapImg.width, mapImg.height);
+		}
+
+		// Draws the main menu screen
+		function drawMainMenu() {
+			// Draw background
+			context.drawImage(mainMenuImg, 0, 0, mainMenuImg.width, mainMenuImg.height);
+
+			// Draw buttons
+			context.drawImage(btnStart, canvas.width / 2 - btnStart.width / 2, canvas.height / 2, btnStart.width, btnStart.height);
+			context.drawImage(btnInstructions, canvas.width / 2 - btnInstructions.width / 2, canvas.height / 2 + btnInstructions.height + halfTileSize, btnInstructions.width, btnInstructions.height);
+		}
+
+		// Draws the instructions screen
+		function drawInstructions(pageNo) {
+			// Getting the image to display depending on current page
+			var img = instructionImages[pageNo - 1];
+
+			// Drawing the appropriate image
+			context.drawImage(img, 0, 0, img.width, img.height);
+
+			// Draw buttons depending on current instruction page
+			if (pageNo == 1) {
+				// Draw Next button only
+				context.drawImage(btnNext, canvas.width / 2 + tileSize / 4, canvas.height - btnNext.height - tileSize / 4, btnNext.width, btnNext.height);
+			} else if (pageNo == 2) {
+				// Draw Next and Previous buttons
+				context.drawImage(btnPrev, canvas.width / 2 - btnPrev.width - tileSize / 4, canvas.height - btnPrev.height - tileSize / 4, btnPrev.width, btnPrev.height);
+				context.drawImage(btnNext, canvas.width / 2 + tileSize / 4, canvas.height - btnNext.height - tileSize / 4, btnNext.width, btnNext.height);
+			} else if (pageNo == 3) {
+				// Draw Start and Previous buttons
+				context.drawImage(btnPrev, canvas.width / 2 - btnPrev.width - tileSize / 4, canvas.height - btnPrev.height - tileSize / 4, btnPrev.width, btnPrev.height);
+				context.drawImage(btnStart, canvas.width / 2 + tileSize / 4, canvas.height - btnStart.height - tileSize / 4, btnStart.width, btnStart.height);
+			}
+		}
+
+		// Draws the end screen
+		function drawEndScreen() {
+			// Remove enemies
+			enemyObjArray.length = 0;
+
+			// Draw the map, obstacles and player objects
+			drawMap();
+			drawObstacles();
+			drawPlayerObjects();
+
+			// Draw overlay 'shadow' image
+			context.drawImage(shadowImg, 0, 0, shadowImg.width, shadowImg.height);
+
+			// Draw game over
+			context.drawImage(endScreenImg, 0, 0, endScreenImg.width, endScreenImg.height);
+
+			// Draw text stats
+			var text = "YOUR DEFENCE HAS BEEN BREACHED!";
+			var endTime = "Time: " + msToMMSS(gameTimer);
+			var endWave = "Wave: " + wave;
+			var endMoney = "Money : $" + money;
+
+			// Setting the text to be white and use Oswald 30px font.
+			context.fillStyle = "#FFF";
+			context.font = "30px Oswald";
+			context.fillText(text, canvas.width / 2 - context.measureText(text).width / 2, canvas.height / 2 - tileSize * 2 + halfTileSize);
+			context.fillText(endTime, canvas.width / 2 - context.measureText(endTime).width / 2, canvas.height / 2 - tileSize * 2 + halfTileSize * 2);
+			context.fillText(endWave, canvas.width / 2 - context.measureText(endWave).width / 2, canvas.height / 2 - tileSize * 2 + halfTileSize * 3);
+			context.fillText(endMoney, canvas.width / 2 - context.measureText(endMoney).width / 2, canvas.height / 2 - tileSize * 2 + halfTileSize * 4);
+
+			// Saving player's best if not yet saved
+			if (!playerBestSaved) {
+				if (playerBestTime < gameTimer)
+					playerBestTime = gameTimer;
+
+				if (playerBestWave < wave)
+					playerBestWave = wave;
+
+				savePlayersBest(playerBestTime, playerBestWave);
+			}
+
+			var yourBestTime = "Your best time: " + msToMMSS(playerBestTime);
+			var yourBestWave = "Your best wave: " + playerBestWave;
+
+			context.fillText(yourBestTime, canvas.width / 2 - context.measureText(yourBestTime).width / 2, canvas.height / 2 - tileSize * 2 + halfTileSize * 7);
+			context.fillText(yourBestWave, canvas.width / 2 - context.measureText(yourBestWave).width / 2, canvas.height / 2 - tileSize * 2 + halfTileSize * 8);
+
+			// Draw Restart button
+			context.drawImage(btnRestart, canvas.width / 2 - btnRestart.width / 2, canvas.height - btnRestart.height - tileSize / 4, btnRestart.width, btnRestart.height);
+		}
+
+		// Draws side menu
+		function drawSideMenu() {
+			// Checking if the side menu is expanded
+			if (menuExpanded) {
+				// Drawing side menu
+				context.drawImage(menuFullImg, canvas.width - menuFullImg.width, 0, menuFullImg.width, menuFullImg.height);
+
+				// Drawing hide button
+				context.drawImage(menuHideImg, canvas.width - menuFullImg.width - menuHideImg.width, 0, menuHideImg.width, menuHideImg.height);
+				if (selectedMenuObject) {
+					context.drawImage(menuSelectImg, canvas.width - menuSelectImg.width, (menuSelectedRow - 1) * tileSize);
+				}
+			}
+			else {
+				// Else drawing expand menu button
+				context.drawImage(menuExpandImg, canvas.width - menuExpandImg.width, 0, menuExpandImg.width, menuExpandImg.height);
+			}
+		}
+
+		// Draws money shake animation
+		function shakeMoneyAnimation(type) {
+			if (shakeMoneyTimer == 0 && shakeMoney == false) {
+				shakeMoney = true;
+				shakeMoneyPositive = type;
+			} else {
+				shakeMoneyTimer += frameTime;
+				if (shakeMoneyTimer >= 0.2 * 1000) {
+					shakeMoney = false;
+					shakeMoneyTimer = 0;
+				}
+			}
+		}
+
+		// Draws information text
+		function drawInfoText() {
+			var textToDisplay = infoText;
+			if (textToDisplay.length > 0) {
+				infoTextTimer -= frameTime;
+
+				context.font = "30px Oswald";
+				context.fillStyle = "#FFF";
+				context.fillText(textToDisplay, canvas.width / 2 - context.measureText(textToDisplay).width / 2, tileSize);
+
+				// Resetting the information text if the display time has elapsed
+				if (infoTextTimer <= 0)
+					infoText = "";
+			}
+		}
+
+		// Drawing player stats (timer, wave, lifes, money)
+		function drawPlayerStats() {
+			// Drawing timer
+			// Getting game time in mm:ss format.
+			var timer = msToMMSS(gameTimer);
+
+			var textToDisplay = timer + " (" + wave + ")";
+
+			context.font = "30px Oswald";
+			context.fillStyle = "#FFF";
+			context.fillText(textToDisplay, canvas.width / 2 - context.measureText(textToDisplay).width / 2, halfTileSize);
+
+			// Drawing money
+			textToDisplay = "$" + money;
+			// Checking if money is to be animated
+			if (shakeMoney) {
+				shakeMoneyAnimation(shakeMoneyPositive);
+				// If the shake is to be positive setting the color to green. Otherwise to red.
+				if (shakeMoneyPositive)
+					context.fillStyle = "#77dd77";
+				else
+					context.fillStyle = "#fe6a63";
+
+				// Getting random offsets to shake the money
+				var xRandOffset = Math.random() * (10 - 1) + 1; // between 1 and 10
+				var positive = Math.floor(Math.random() * Math.floor(2)); // 0 means no 1 means yes
+				if (positive == 0)
+					xRandOffset *= -1;
+				var yRandOffset = Math.random() * (10 - 1) + 1; // between 1 and 10
+				positive = Math.floor(Math.random() * Math.floor(2)); // 0 means no 1 means yes
+				if (positive == 0)
+					yRandOffset *= -1;
+
+				// Drawing the money with offsets and set colour
+				context.fillText(textToDisplay, tileSize / 4 + xRandOffset, canvas.height - tileSize / 4 + yRandOffset);
+			}
+			else {
+				// Else draw money normally
+				context.fillText(textToDisplay, tileSize / 4, canvas.height - tileSize / 4);
+			}
+
+			// Drawing lives
+			var allLifesWidth = 0;
+			// If its the last life removing the (tileSize / 8) offset
+			if (lifes == 1) {
+				allLifesWidth = lifeImg.width;
+			}
+			else {
+				allLifesWidth = (lifeImg.width + tileSize / 8) * lifes;
+			}
+
+			for (var i = 0; i < lifes; i++) {
+				context.drawImage(lifeImg, canvas.width / 2 - allLifesWidth / 2 + (lifeImg.width + 8) * i, canvas.height - lifeImg.height - tileSize / 4, lifeImg.width, lifeImg.height);
+			}
+		}
+
+		// Drawing reload animation
+		function drawReloading(obj) {
+			context.save();
+			context.translate(obj.posX + reloadImg.width / 2, obj.posY + reloadImg.height / 2);
+			// Getting the angle using object's current reload time
+			context.rotate(obj.reloadTimer / Math.PI / 100);
+			context.drawImage(reloadImg, -reloadImg.width / 2, -reloadImg.height / 2, reloadImg.width, reloadImg.height);
+			context.restore();
+		}
+
+		// Draws the obstacles on the map (trees)
+		function drawObstacles() {
+			for (var i = 0; i < obstaclesArray.length; i++) {
+				var obstacle = obstaclesArray[i];
+				context.drawImage(obstacle.image, obstacle.posX, obstacle.posY, obstacle.image.width, obstacle.image.height);
+			}
+		}
+
+		// Draws player objects on the map
+		function drawPlayerObjects() {
+			for (var i = 0; i < playerObjArray.length; i++) {
+				var obj = playerObjArray[i];
+				var imgToUse;
+
+				// If the object is reloading showing its out of ammo image
+				if (obj.reloading)
+					imgToUse = obj.emptyImage;
+				else
+					imgToUse = obj.image;
+
+				// Drawing base image
+				context.drawImage(objBaseImg, obj.posX, obj.posY, objBaseImg.width, objBaseImg.height);
+
+				if (!pausedGame)
+					objectBehaviour(obj);
+
+				if (enemyObjArray.length > 0) {
+					// Check if enemy is within range
+					for (var x = 0; x < enemyObjArray.length; x++) {
+						var enemy = enemyObjArray[x];
+						var tileDist = getTileDistance(obj.posX, obj.posY, enemy.posX, enemy.posY);
+
+						context.save();
+						// Checking if enemy is within object's range
+						if (obj.range >= tileDist) {
+							//console.log("Object in range!");
+							// Rotating the object towards the enemy
+							obj.rotation = getAngleTowardsObject(obj.posX, obj.posY, enemy.posX, enemy.posY) * Math.PI / 180;
+							context.translate(obj.posX + imgToUse.width / 2, obj.posY + imgToUse.height / 2);
+							context.rotate(obj.rotation);
+							context.drawImage(imgToUse, -imgToUse.width / 2, -imgToUse.height / 2, imgToUse.width, imgToUse.height);
+
+							shootAtEnemy(obj, enemy);
+							context.restore();
+							// breaking the for loop to make the objects attack the first enemy (closest to end point)
+							break;
+						}
+						else {
+							//console.log("Not in range Dist: ");
+							// Draw image with last recorded rotation
+							context.translate(obj.posX + imgToUse.width / 2, obj.posY + imgToUse.height / 2);
+							context.rotate(obj.rotation);
+							context.drawImage(imgToUse, -imgToUse.width / 2, -imgToUse.height / 2, imgToUse.width, imgToUse.height);
+							context.restore();
+						}
+					}
+				}
+				else {
+					// If no enemies just draw the object with last recorded rotation
+					context.save();
+					context.translate(obj.posX + imgToUse.width / 2, obj.posY + imgToUse.height / 2);
+					context.rotate(obj.rotation);
+					context.drawImage(imgToUse, -imgToUse.width / 2, -imgToUse.height / 2, imgToUse.width, imgToUse.height);
+					context.restore();
+				}
+			}
+		}
+
+		// Draws bullets
+		function drawBullets() {
+			if (!pausedGame)
+				moveBullets();
+
+			for (var i = 0; i < bulletArray.length; i++) {
+				var bullet = bulletArray[i];
+				context.save();
+				// Rotate the bullet towards enemy
+				bullet.rotation = getAngleTowardsObject(bullet.posX, bullet.posY, bullet.enemy.posX, bullet.enemy.posY) * Math.PI / 180;
+				context.translate(bullet.posX + bullet.image.width / 2, bullet.posY + bullet.image.height / 2);
+				context.rotate(bullet.rotation);
+				context.drawImage(bullet.image, -bullet.image.width / 2, -bullet.image.height / 2, bullet.image.width, bullet.image.height);
+
+				// Drawing flames at the end of the rocket
+				if (bullet.type == "rockets") {
+					context.drawImage(rocketFlameImg, -bullet.image.width / 2, -bullet.image.height / 2 + tileSize / 4, rocketFlameImg.width, rocketFlameImg.height);
+				}
+
+				context.restore();
+			}
+		}
+
+		// Draws special effects (rocket and tank explosions)
+		function drawSpecialEffects() {
+			// Drawing rocket explosions first
+			for (var i = 0; i < rocketExplosionArray.length; i++) {
+				var animObj = rocketExplosionArray[i];
+
+				if (animObj.framesPassed < rocketExplosionImgArray.length) {
+					var img = rocketExplosionImgArray[animObj.framesPassed];
+					context.drawImage(img, animObj.posX, animObj.posY, img.width, img.height);
+					animObj.framesPassed++;
+				}
+			}
+
+			// Remove animations that have finished
+			rocketExplosionArray = rocketExplosionArray.filter(function (el) { return el.framesPassed < rocketExplosionImgArray.length });
+
+			// Drawing tank explosions
+			for (var i = 0; i < tankExplosionsArray.length; i++) {
+				var animObj = tankExplosionsArray[i];
+
+				if (animObj.framesPassed < tankExplosionImgArray.length) {
+					var img = tankExplosionImgArray[animObj.framesPassed];
+					context.drawImage(img, animObj.posX, animObj.posY, img.width, img.height);
+					animObj.framesPassed++;
+				}
+			}
+
+			// Remove animations that have finished
+			tankExplosionsArray = tankExplosionsArray.filter(function (el) { return el.framesPassed < tankExplosionImgArray.length });
+		}
+
+		// Draws enemies
+		function drawEnemies() {
+			if (!pausedGame)
+				moveEnemies();
+
+			for (var i = 0; i < enemyObjArray.length; i++) {
+				var enemy = enemyObjArray[i];
+				context.save();
+				context.translate(enemy.posX, enemy.posY);
+				// Rotating the enemy depending on current direction
+				switch (movePoints[enemy.pointReached].direction) {
+					case "up":
+						context.rotate(-90 * Math.PI / 180);
+						context.drawImage(enemy.image, -tileSize, 0, enemy.image.width, enemy.image.height);
+						break;
+					case "down":
+						context.rotate(90 * Math.PI / 180);
+						context.drawImage(enemy.image, 0, -tileSize, enemy.image.width, enemy.image.height);
+						break;
+					case "left":
+						context.rotate(-180 * Math.PI / 180);
+						context.drawImage(enemy.image, -tileSize, -tileSize, enemy.image.width, enemy.image.height);
+						break;
+					case "right":
+						context.rotate(0);
+						context.drawImage(enemy.image, 0, 0, enemy.image.width, enemy.image.height);
+						break;
+					default:
+						break;
+				}
+
+				context.restore();
+			}
+		}
+
+		// Draws prohibited image
+		function drawProhibited() {
+			for (var i = 0; i < prohibitedObjArray.length; i++) {
+				var obj = prohibitedObjArray[i];
+				obj.timer += frameTime;
+				if (obj.timer <= 1 * 1000) {
+					// Creating a pulsing effect.
+					context.globalAlpha = Math.sin(obj.timer / 100);
+					context.drawImage(prohibitedImg, obj.posX, obj.posY, prohibitedImg.width, prohibitedImg.height);
+					context.globalAlpha = 1.0;
+				}
+			}
+
+			// Remove objects that time elapsed
+			prohibitedObjArray.filter(function (el) { return el.timer < 1 * 1000 });
+		}
+
+		// Responsible for executing all drawing functions
+		function drawGame() {
+			context.clearRect(0, 0, canvas.width, canvas.height);
+
+			drawMap();
+			drawObjectRange();
+			drawObstacles();
+			drawBullets();
+			drawPlayerObjects();
+			drawEnemies();
+			drawSideMenu();
+			drawPlayerStats();
+			drawInfoText();
+			drawProhibited();
+			drawSpecialEffects();
+			drawRemoveConfirmation();
+			context.fill();
+		}
+
+		// Draws pause screen
+		function drawPause() {
+			// Draw 'shadow' image
+			context.drawImage(shadowImg, 0, 0, shadowImg.width, shadowImg.height);
+
+			// Draw Pause text (image)
+			context.drawImage(pauseImg, 0, 0, pauseImg.width, pauseImg.height);
+
+			// Draw resume button
+			context.drawImage(btnResume, canvas.width / 2 - btnResume.width / 2, canvas.height / 2, btnResume.width, btnResume.height);
+		}
+    </script>
+</head>
+<body>
+    <canvas id="game-canvas" width="1024" height="576"></canvas>
+</body>
+</html>
